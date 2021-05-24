@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./Pausable.sol";
 import "./WhitelistAdminRole.sol";
 import "./Wrap.sol";
-import "./MYIERC721.sol";
+import "./MyIERC721.sol";
 import "./ERC721TokenReceiver.sol";
 
 contract Stake is Wrap, Pausable, WhitelistAdminRole {
@@ -189,7 +189,6 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
 
     function redeem(address _erc721Address, uint256 id)
         external
-        payable
         updateReward(msg.sender)
     {
         require(cards[_erc721Address][id].points != 0, "Card not found");
@@ -207,7 +206,7 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
         );
         spentScore = spentScore.add(cards[_erc721Address][id].points);
 
-        MyIERC721(cards[_erc721Address][id].erc721).mint(msg.sender, "");
+        MyIERC721(cards[_erc721Address][id].erc721).mint(msg.sender);
 
         emit Redeemed(
             msg.sender,
