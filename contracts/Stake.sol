@@ -138,12 +138,31 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
         super.stake(amount);
         emit Staked(msg.sender, amount);
     }
+    
+    function fixedStake (uint256 _day, uint256 _amount) public override whenNotPaused() {
+        require(block.timestamp >= periodStart, "Pool not open");
+        require(
+            _amount.add(balanceOf(msg.sender)) >= minStake,
+            "Too few deposit"
+        );
+        require(
+            _amount.add(balanceOf(msg.sender)) <= maxStake,
+            "Deposit limit reached"
+        );
+        points[msg.sender] = points[msg.sender].add(_day.mul(_amount));
+        super.fixedStake(_day, _amount);
+    }
 
     function withdraw(uint256 amount) public override updateReward(msg.sender) {
         require(amount > 0, "Cannot withdraw 0");
 
         super.withdraw(amount);
         emit Withdrawn(msg.sender, amount);
+    }
+    
+    function withdrawFixedStake(uint256 index) public override {
+
+        super.withdrawFixedStake(index);
     }
 
     function exit() external {
