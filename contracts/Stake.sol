@@ -27,6 +27,8 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
     uint256 public periodStart;
     uint256 public minStake;
     uint256 public maxStake;
+    uint256 public minStakeFixed;
+    uint256 public maxStakeFixed;
     address public controller;
     bool public constructed = false;
     address public rescuer;
@@ -67,6 +69,8 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
         uint256 _periodStart,
         uint256 _minStake,
         uint256 _maxStake,
+        uint256 _minStakeFixed,
+        uint256 _maxStakeFixed,
         address _controller,
         IERC20 _tokenAddress,
         string memory _uri
@@ -79,6 +83,8 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
         periodStart = _periodStart;
         minStake = _minStake;
         maxStake = _maxStake;
+        minStakeFixed = _minStakeFixed;
+        maxStakeFixed = _maxStakeFixed;
         controller = _controller;
         rescuer = _controller;
         // 		super.initWhiteListAdmin();
@@ -92,6 +98,18 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
     }
 
     function setMinMaxStake(uint256 _minStake, uint256 _maxStake)
+        external
+        onlyWhitelistAdmin
+    {
+        require(
+            _minStake >= 0 && _maxStake > 0 && _maxStake >= _minStake,
+            "Problem with min and max stake setup"
+        );
+        minStake = _minStake;
+        maxStake = _maxStake;
+    }
+
+    function setMinMaxStakeFixed(uint256 _minStake, uint256 _maxStake)
         external
         onlyWhitelistAdmin
     {
@@ -138,17 +156,15 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
         super.stake(amount);
         emit Staked(msg.sender, amount);
     }
-    
-    function fixedStake (uint256 _day, uint256 _amount) public override whenNotPaused() {
+
+    function fixedStake(uint256 _day, uint256 _amount)
+        public
+        override
+        whenNotPaused()
+    {
         require(block.timestamp >= periodStart, "Pool not open");
-        require(
-            _amount.add(balanceOf(msg.sender)) >= minStake,
-            "Too few deposit"
-        );
-        require(
-            _amount.add(balanceOf(msg.sender)) <= maxStake,
-            "Deposit limit reached"
-        );
+        require(_amount >= minStakeFixed, "Too few deposit");
+        require(_amount <= maxStakeFixed, "Deposit limit reached");
         points[msg.sender] = points[msg.sender].add(_day.mul(_amount));
         super.fixedStake(_day, _amount);
     }
@@ -159,9 +175,8 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
         super.withdraw(amount);
         emit Withdrawn(msg.sender, amount);
     }
-    
-    function withdrawFixedStake(uint256 index) public override {
 
+    function withdrawFixedStake(uint256 index) public override {
         super.withdrawFixedStake(index);
     }
 
@@ -192,7 +207,6 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
         uint256 _releaseTime,
         address _erc721Address,
         uint256 _tokenId,
-        address _owner,
         uint256 _cardAmount
     ) public onlyWhitelistAdmin returns (uint256) {
         require(_tokenId > 0, "Invalid token id");
@@ -201,7 +215,6 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
         c.points = _points;
         c.releaseTime = _releaseTime;
         c.erc721 = _erc721Address;
-        c.owner = _owner;
         c.supply = c.supply.add(_cardAmount);
         return _tokenId;
     }
