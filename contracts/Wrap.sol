@@ -15,10 +15,13 @@ contract Wrap {
     }
 
     uint256 private _totalSupply;
+    
     mapping(address => uint256) private _balances;
     mapping(address => uint256[]) public fixedBalances;
     mapping(address => uint256[]) public releaseTime;
     mapping(address => uint256) public fixedStakeLength;
+    
+    event WithdrawnFixedStake(address indexed user, uint256 amount);
 
     function totalSupply() external view returns (uint256) {
         return _totalSupply;
@@ -33,8 +36,8 @@ contract Wrap {
         _balances[msg.sender] = _balances[msg.sender].add(amount);
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
     }
-
-    function fixedStake(uint256 _day, uint256 _amount) public virtual {
+    
+    function fixedStake (uint256 _day, uint256 _amount) public virtual {
         fixedBalances[msg.sender].push(_amount);
         uint256 time = block.timestamp + _day * 1 days;
         releaseTime[msg.sender].push(time);
@@ -56,39 +59,30 @@ contract Wrap {
         _balances[account] = _balances[account].sub(amount);
         IERC20(token).safeTransfer(account, amount);
     }
-
-    function withdrawFixedStake(uint256 _index) public virtual {
+    
+     function withdrawFixedStake(uint256 _index) public virtual {
         require(fixedBalances[msg.sender].length >= _index, "No Record Found");
         require(fixedBalances[msg.sender][_index] != 0, "No Balance To Break");
-        require(
-            releaseTime[msg.sender][_index] <= block.timestamp,
-            "Time isn't up"
-        );
-
+        require(releaseTime[msg.sender][_index] <= block.timestamp, "Time isn't up");
+        
         _totalSupply = _totalSupply.sub(fixedBalances[msg.sender][_index]);
-        IERC20(token).safeTransfer(
-            msg.sender,
-            fixedBalances[msg.sender][_index]
-        );
+        IERC20(token).safeTransfer(msg.sender, fixedBalances[msg.sender][_index]);
+        emit WithdrawnFixedStake(msg.sender, fixedBalances[msg.sender][_index]);
         removeBalance(_index);
         removeReleaseTime(_index);
         fixedStakeLength[msg.sender] -= 1;
+        
     }
-
-    function removeBalance(uint256 index) internal {
+    function removeBalance(uint index) internal {
         // Move the last element into the place to delete
-        fixedBalances[msg.sender][index] = fixedBalances[msg.sender][
-            fixedBalances[msg.sender].length - 1
-        ];
+        fixedBalances[msg.sender][index] = fixedBalances[msg.sender][fixedBalances[msg.sender].length - 1];
         // Remove the last element
         fixedBalances[msg.sender].pop();
     }
-
-    function removeReleaseTime(uint256 index) internal {
+    
+    function removeReleaseTime(uint index) internal {
         // Move the last element into the place to delete
-        releaseTime[msg.sender][index] = releaseTime[msg.sender][
-            releaseTime[msg.sender].length - 1
-        ];
+        releaseTime[msg.sender][index] = releaseTime[msg.sender][releaseTime[msg.sender].length - 1];
         // Remove the last element
         releaseTime[msg.sender].pop();
     }

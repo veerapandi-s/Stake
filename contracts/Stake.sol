@@ -12,7 +12,6 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
         uint256 points;
         uint256 releaseTime;
         address erc721;
-        address owner;
         uint256 supply;
     }
 
@@ -35,12 +34,14 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
     uint256 public spentScore;
 
     event Staked(address indexed user, uint256 amount);
+    event FixedStaked(address indexed user, uint256 indexed amount, uint256 indexed day);
     event FarmCreated(
         address indexed user,
         address indexed farm,
         uint256 fee,
         string uri
     );
+    
     event FarmUri(address indexed farm, string uri);
     event Withdrawn(address indexed user, uint256 amount);
     event RescueRedeemed(address indexed user, uint256 amount);
@@ -65,7 +66,7 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
         _;
     }
 
-    constructor(
+   constructor(
         uint256 _periodStart,
         uint256 _minStake,
         uint256 _maxStake,
@@ -108,7 +109,7 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
         minStake = _minStake;
         maxStake = _maxStake;
     }
-
+    
     function setMinMaxStakeFixed(uint256 _minStake, uint256 _maxStake)
         external
         onlyWhitelistAdmin
@@ -156,17 +157,22 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
         super.stake(amount);
         emit Staked(msg.sender, amount);
     }
-
-    function fixedStake(uint256 _day, uint256 _amount)
-        public
-        override
-        whenNotPaused()
-    {
+    
+    function fixedStake (uint256 _day, uint256 _amount) public override whenNotPaused() {
         require(block.timestamp >= periodStart, "Pool not open");
-        require(_amount >= minStakeFixed, "Too few deposit");
-        require(_amount <= maxStakeFixed, "Deposit limit reached");
+        require(_day > 0, "Can't stake for Zero days");
+        require(
+            _amount >= minStakeFixed,
+            "Too few deposit"
+        );
+        require(
+            _amount <= maxStakeFixed,
+            "Deposit limit reached"
+        );
         points[msg.sender] = points[msg.sender].add(_day.mul(_amount));
         super.fixedStake(_day, _amount);
+        
+        emit FixedStaked(msg.sender, _amount, _day);
     }
 
     function withdraw(uint256 amount) public override updateReward(msg.sender) {
@@ -175,8 +181,9 @@ contract Stake is Wrap, Pausable, WhitelistAdminRole {
         super.withdraw(amount);
         emit Withdrawn(msg.sender, amount);
     }
-
+    
     function withdrawFixedStake(uint256 index) public override {
+
         super.withdrawFixedStake(index);
     }
 
